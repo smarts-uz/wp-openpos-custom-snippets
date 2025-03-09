@@ -1,0 +1,17 @@
+'StatementLineMaint'.maint({panelStyle: "titled"})
+'Add Statement Line'.title({when: 'adding'})
+'Edit Statement Line'.title({when: 'editing'})
+'Back'.action({act: 'cancel'})
+'OK'.action({act: 'ok'})
+'Save'.action({act: 'save'})
+'Add another line'.action({act: 'add'})
+'StatementLine'.datatype()
+
+'Line Details'.panel()
+'statement'.field()
+'sequence'.field()
+'caption'.field()
+'ranges'.field()
+'drcr'.field()
+'bold'.field()
+

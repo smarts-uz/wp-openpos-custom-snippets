@@ -1,0 +1,30 @@
+<?php
+
+// File generated from our OpenAPI spec
+
+namespace Stripe\StripeTaxForWooCommerce\SDK\lib\Service\Tax;
+
+/**
+ * Service factory class for API resources in the Tax namespace.
+ *
+ * @property CalculationService $calculations
+ * @property RegistrationService $registrations
+ * @property SettingsService $settings
+ * @property TransactionService $transactions
+ */
+class TaxServiceFactory extends \Stripe\StripeTaxForWooCommerce\SDK\lib\Service\AbstractServiceFactory {
+
+	/**
+	 * @var array<string, string>
+	 */
+	private static $classMap = array(
+		'calculations'  => CalculationService::class,
+		'registrations' => RegistrationService::class,
+		'settings'      => SettingsService::class,
+		'transactions'  => TransactionService::class,
+	);
+
+	protected function getServiceClass( $name ) {
+		return \array_key_exists( $name, self::$classMap ) ? self::$classMap[ $name ] : null;
+	}
+}

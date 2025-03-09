@@ -1,0 +1,533 @@
+'MasterSchedule'.page({readOnly: false})
+'Schedule Master'.title()
+'Back'.action()
+'Save'.action()
+
+'Back'.act(async page => {
+  global.app.backToFirstDifferentSpec({promptIfUnsaved: true})
+})
+
+'Save'.act(async page => {
+  global.showSpinner()
+  try {
+    let errMsg = await global.foreman.doAtomicSave()
+    if ( errMsg ) {
+      console.log("Error on saving: " + errMsg)
+      global.gApp.showMessage(errMsg)
+      return
+    }
+  } finally {
+    global.hideSpinner()
+  }
+})
+
+'schedule'.schedule({fixedColCaptions: ['Work Station', 'Name'], fixedColWidths: [150, 300], colWidth: 140})
+
+/* eslint-disable no-cond-assign */
+
+'schedule'.colCaptions(page => {
+  let date = global.todayLocal()
+  let colCount = 7
+  let res = []
+  for ( var i = 0; i < colCount; i++ ) {
+    res.push(date)
+    date = date.incDays(1)
+  }
+  return res
+})
+
+'schedule'.moveDweller(async (id, x, y, tableau) => {
+
+  let xToDateAndHHMM = x => {
+    let res = {ymd: global.todayYMD(), hhmm: '08:00'}
+    if ( x < 0 )
+      return res
+    let wholeDays = Math.floor(x)
+    res.ymd = res.ymd.incDays(wholeDays)
+    let hoursDec = ((x - wholeDays) * 8.0) + 8.0
+    let wholeHours = Math.floor(hoursDec)
+    let hh = global.padWithZeroes(wholeHours, 2)
+    let minsDec = (hoursDec - wholeHours) * 60
+    let wholeMins = Math.floor(minsDec)
+    let mm = global.padWithZeroes(wholeMins, 2)
+    res.hhmm = hh + ':' + mm
+    return res
+  }
+
+  let yToWKC = y => {
+    let rows = tableau.rows; if ( ! rows ) return
+    for ( var i = 0; i < rows.length; i++ ) {
+      let row = rows[i]
+      if ( row.y === y )
+        return row.object
+    }
+  }
+
+  let woProcess = await 'WOProcess'.bringSingle({id: id}); if ( ! woProcess ) return 
+  let dt = xToDateAndHHMM(x)
+  woProcess.scheduledStartDate = dt.ymd
+  woProcess.scheduledStartHHMM = dt.hhmm
+  let wkc = yToWKC(y)
+  if ( wkc )
+    woProcess.station = wkc.reference()
+})
+
+'schedule'.refreshTableau(async schedule => {
+  let tableau = {}
+
+  let hoursToShifts = hours => {
+    return hours / 8
+  }
+
+  let hhMMToHHNum = hhMM => {
+    if ( ! hhMM )
+      hhMM = '08:00'
+    let arr = hhMM.split(':')
+    let hhInt = parseInt(arr[0])
+    let mmInt = parseInt(arr[1])
+    let res = hhInt + (mmInt / 60)
+    return res
+  }
+
+  let hhNumToHHMM = hhNum => {
+    let hhInt = Math.floor(hhNum)
+    let mmInt = (hhNum - hhInt) * 60
+    return global.padWithZeroes(hhInt, 2) + ':' + global.padWithZeroes(mmInt, 2)
+  }
+
+  let addHoursToDateAndHHMM = (dateAndHHMM, hours) => {
+    let ymd = dateAndHHMM.ymd
+    let hhNum = hhMMToHHNum(dateAndHHMM.hhmm) + hours
+    if ( hhNum > 16 ) /* 4 pm */ {
+      let incDays = Math.floor((hhNum - 16) / 8)
+      ymd = ymd.incDays(ymd, incDays)
+      hhNum = hhNum - (incDays / 8)
+    }
+    let hhMM = hhNumToHHMM(hhNum)
+    return {ymd: ymd, hhmm: hhMM}
+  }
+
+  let wopToEndDateAndHHMM = wop => {
+    let res = {ymd: wop.scheduledStartDate, hhmm: wop.scheduledStartHHMM}
+    if ( ! res.ymd ) {
+      res.ymd = global.todayYMD()
+      res.hhmm = '08:00'
+    }
+    res = addHoursToDateAndHHMM(res, wop.hours)
+    return res
+  }
+
+  let wkcToLatestWOProcess = async wkc => {
+    let wop; let wops = await 'WOProcess'.bring({wkc: wkc})
+    let latestWop
+    while ( wop = wops.__() ) {
+      if ( ! latestWop ) {
+        latestWop = wop
+        continue
+      }
+      if ( wop.scheduledStartDate > latestWop.scheduledStartDate ) {
+        latestWop = wop
+        continue
+      }
+      if ( wop.scheduledStartDate === latestWop.scheduledStartDate ) {
+        if ( wop.scheduledStartHHMM > latestWop.scheduledStartHHMM ) {
+          latestWop = wop
+          continue
+        }
+      }
+    }
+    return latestWop
+  }
+
+  let wkcToNextAvailableStartDateAndHHMM = async wkc => {
+    let res = {ymd: global.todayYMD(), hhmm: '08:00'}
+    let wop = await wkcToLatestWOProcess(wkc); if ( ! wop ) return res
+    res = wopToEndDateAndHHMM(wop)
+    return res
+  }
+
+  let allocateWOProcessToWKC = async wop => {
+    let process = await wop.referee('process'); if ( ! process ) return
+"40".m()
+    let wkcProcess = await 'StationProcess'.bringFirst({process: process}); if ( ! wkcProcess ) return
+"41".m()
+    let wkc = await wkcProcess.referee('station'); if ( ! wkc ) return;
+"42".m()
+    let dtObj = await wkcToNextAvailableStartDateAndHHMM(wkc)
+    wop.scheduledStartDate = dtObj.ymd
+    wop.scheduledStartHHMM = dtObj.hhmm
+    wop.station = wkc.reference()
+  }
+
+  let dateAndHHMMToX = dateHHMM => {
+    if ( ! dateHHMM.ymd ) return 0
+    let daysInt = dateHHMM.ymd.dateSubtract(global.todayYMD())
+    let hoursNum = hhMMToHHNum(dateHHMM.hhmm)
+    hoursNum -= 8
+    return daysInt + (hoursNum / 8)
+  }
+
+  let wkcToY = wkc => {
+    for ( var i = 0; i < rows.length; i++ ) {
+      let row = rows[i]
+      if ( row.object === wkc ) {
+        return i
+      }
+    }
+    return 0
+  }
+
+  let addProcesses = async (dwellers, wo) => {
+    let allocsOccurred
+    let wop; let wops = await 'WOProcess'.bring({workOrder: wo})
+    while ( wop = wops.__() ) {
+"30".m()
+      let process = await wop.referee('process'); if ( ! process ) continue
+      let dweller = {}
+      dweller.w = hoursToShifts(wop.hours)
+      if ( ! dweller.w )
+        dweller.w = 1
+      dweller.caption = wo.workOrderNumber
+      dweller.object = wop
+      let wkc = await wop.referee('station')
+      if ( ! wkc ) {
+        await allocateWOProcessToWKC(wop)
+"31".m()
+        wkc = await wop.referee('station'); if ( ! wkc ) continue
+"32".m()
+        allocsOccurred = true
+      }
+      dweller.x = dateAndHHMMToX({ymd: wop.scheduledStartDate, hhmm: wop.scheduledStartHHMM})
+      dweller.y = wkcToY(wkc)
+      dweller.caption = wo.workOrderNumber + ' - ' + process.processName
+      dwellers.push(dweller)
+    }
+    if ( allocsOccurred )
+      await global.foreman.doSave()
+  }
+
+  let addDwellers = async () => {
+    let dwellers = []
+    let wo; let wos = await 'WO'.bring({status: 'Awaiting Manufacture'})
+    while ( wo = wos.__() ) {
+      await addProcesses(dwellers, wo)
+    }
+    tableau.dwellers = dwellers
+  }
+
+  let rows = []
+  let workCentre; let workCentres = await 'Station'.bring()
+  let y = 0
+  while ( workCentre = workCentres.__() ) {
+    let row = {}
+    row.captions = []
+    row.captions.push(workCentre.stationCode)
+    row.captions.push(workCentre.stationName)
+    row.object = workCentre
+    row.y = y
+    y++
+    rows.push(row)
+  }
+  tableau.rows = rows
+  
+  await addDwellers()
+
+  return tableau
+})
+/*
+'MasterSchedule'.page({readOnly: false})
+'Schedule Master'.title()
+'Back'.action()
+'Save'.action()
+
+'Back'.act(async page => {
+  global.app.backToFirstDifferentSpec({promptIfUnsaved: true})
+})
+
+'Save'.act(async page => {
+  global.showSpinner()
+  try {
+    let errMsg = await global.foreman.doAtomicSave()
+    if ( errMsg ) {
+      console.log("Error on saving: " + errMsg)
+      global.gApp.showMessage(errMsg)
+      return
+    }
+  } finally {
+    global.hideSpinner()
+  }
+})
+
+'schedule'.schedule({fixedColCaptions: ['Work Station', 'Name'], fixedColWidths: [150, 300], colWidth: 140})
+
+*/
+/* eslint-disable no-cond-assign */
+
+/*
+'schedule'.colCaptions(page => {
+  let date = global.todayLocal()
+  let colCount = 7
+  let res = []
+  for ( var i = 0; i < colCount; i++ ) {
+    res.push(date)
+    date = date.incDays(1)
+  }
+  return res
+})
+
+'schedule'.moveDweller(async (id, x, y, tableau) => {
+
+  let stationToTodaysFirstSlot = async station => {
+    let slot; let slots = await 'Slot'.bring({station: station})
+    let res
+    let minHHMM = '23:59'
+    while ( slot = slots.__() ) {
+      if ( slot.slotDate !== global.todayYMD() ) continue
+      if ( slot.startHHMM < minHHMM ) {
+        minHHMM = slot.startHHMM
+        res = slot
+      }
+    }
+    return res
+  }
+
+  let yToEarliestStartHHMM = async y => {
+    let res = '00:00'
+    let station = await yToStation(y); if ( ! station  ) return res
+    let slot = await stationToTodaysFirstSlot(station); if ( ! slot  ) return res
+    res = slot.startHHMM
+    return res
+  }
+
+  let ymdAndYToSlotHours = async (ymd, y) => {
+    let res = 0
+    let slot; let slots = await 'Slot'.bring({station: station})
+    while ( slot = slots.__() ) {
+      if ( slot.slotDate !== ymd ) continue
+      res += await slot.getHours()
+    }
+    return res
+  }
+
+  let coordsToDateAndHHMM = async (x, y) => {
+    let startHHMM = await yToEarliestStartHHMM(y)
+    let res = {ymd: global.todayYMD(), hhmm: startHHMM}
+    if ( x < 0 )
+      return res
+    let wholeDays = Math.floor(x)
+    res.ymd = res.ymd.incDays(wholeDays)
+    let slotHoursInDay = await ymdAndYToSlotHours(res.ymd, y)
+    let startHoursSinceMidnight = await global.hhmmToDecimalHours(startHHMM)
+    let hoursDec = ((x - wholeDays) * slotHoursInDay) + startHoursSinceMidnight
+    let wholeHours = Math.floor(hoursDec)
+    let hh = global.padWithZeroes(wholeHours, 2)
+    let minsDec = (hoursDec - wholeHours) * 60
+    let wholeMins = Math.floor(minsDec)
+    let mm = global.padWithZeroes(wholeMins, 2)
+    res.hhmm = hh + ':' + mm
+    return res
+  }
+
+  let yToStation = y => {
+    let rows = tableau.rows; if ( ! rows ) return
+    for ( var i = 0; i < rows.length; i++ ) {
+      let row = rows[i]
+      if ( row.y === y )
+        return row.object
+    }
+  }
+
+  let woProcess = await 'WOProcess'.bringSingle({id: id}); if ( ! woProcess ) return 
+  let dt = await coordsToDateAndHHMM(x, y)
+  woProcess.scheduledStartDate = dt.ymd
+  woProcess.scheduledStartHHMM = dt.hhmm
+  let station = yToStation(y)
+  if ( station )
+    woProcess.station = station.reference()
+})
+
+'schedule'.refreshTableau(async schedule => {
+  let tableau = {}
+
+  let wopToFirstSlot = async wop => {
+    let res
+    let station = await wopToStation(wop); if ( ! station ) return res
+    let slot; let slots = await 'Slot'.bring({station: station})
+    let minYMD = '2999-12-31'
+    let minHHMM = '23:59'
+    while ( slot = slots.__() ) {
+      if ( slot.slotDate < global.todayYMD() ) continue
+      let earlierDate = slot.slotDate < minYMD
+      let sameDate = slot.slotDate === minYMD
+      let earlierTime = slot.startHHMM < minHHMM
+      if ( earlierDate || (sameDate && earlierTime) ) {
+        minYMD = slot.slotDate
+        minHHMM = slot.startHHMM
+        res = slot
+      }
+    }
+    return res
+  }
+
+  let wopToFinishX = async wop => {
+    let res = 0
+    let slot = await wopToLastSlot(wop); if ( ! slot ) return res
+    res = slotToFinishX(slot)
+    return res
+  }
+
+  let wopToShiftCountDecimal = async wop => {
+    return (await wopToFinishX(wop)) - (await wopToStartX(wop))
+  }
+
+  let hhMMToHHNum = hhMM => {
+    if ( ! hhMM )
+      hhMM = '00:00'
+    let arr = hhMM.split(':')
+    let hhInt = parseInt(arr[0])
+    let mmInt = parseInt(arr[1])
+    let res = hhInt + (mmInt / 60)
+    return res
+  }
+
+  let hhNumToHHMM = hhNum => {
+    let hhInt = Math.floor(hhNum)
+    let mmInt = (hhNum - hhInt) * 60
+    return global.padWithZeroes(hhInt, 2) + ':' + global.padWithZeroes(mmInt, 2)
+  }
+
+  let addHoursToDateAndHHMM = async (dateAndHHMM, hours, wop) => {
+    let ymd = dateAndHHMM.ymd
+    let hhNum = hhMMToHHNum(dateAndHHMM.hhmm) + hours
+    if ( hhNum > 16 ) { // 4pm
+      let incDays = Math.floor((hhNum - 16) / 8)
+      ymd = ymd.incDays(ymd, incDays)
+      hhNum = hhNum - (incDays / 8)
+    }
+    let hhMM = hhNumToHHMM(hhNum)
+    return {ymd: ymd, hhmm: hhMM}
+  }
+
+  let wopToEndDateAndHHMM = async wop => {
+    let res = {ymd: wop.scheduledStartDate, hhmm: wop.scheduledStartHHMM}
+    if ( ! res.ymd ) return null
+    res = await addHoursToDateAndHHMM(res, wop.hours, wop)
+    return res
+  }
+
+  let stationToLatestWOProcess = async station => {
+    let wop; let wops = await 'WOProcess'.bring({station: station})
+    let latestWop
+    while ( wop = wops.__() ) {
+      if ( ! latestWop ) {
+        latestWop = wop
+        continue
+      }
+      if ( wop.scheduledStartDate > latestWop.scheduledStartDate ) {
+        latestWop = wop
+        continue
+      }
+      if ( wop.scheduledStartDate === latestWop.scheduledStartDate ) {
+        if ( wop.scheduledStartHHMM > latestWop.scheduledStartHHMM ) {
+          latestWop = wop
+          continue
+        }
+      }
+    }
+    return latestWop
+  }
+
+  let stationToNextAvailableStartDateAndHHMM = async station => {
+    let firstSlotStartHHMM = await stationToFirstSlotStartHHMM(station)
+    let res = {ymd: global.todayYMD(), hhmm: firstSlotStartHHMM}
+    let wop = await stationToLatestWOProcess(station); if ( ! wop ) return res
+    let pres = await wopToEndDateAndHHMM(wop)
+    if ( ! pres ) return res
+    return res
+  }
+
+  let allocateWOProcessToStation = async wop => {
+    let process = await wop.referee('process'); if ( ! process ) return
+    let stationProcess = await 'StationProcess'.bringFirst({process: process}); if ( ! stationProcess ) return
+    let station = await stationProcess.referee('station'); if ( ! station ) return;
+    let dtObj = await stationToNextAvailableStartDateAndHHMM(station)
+    wop.scheduledStartDate = dtObj.ymd
+    wop.scheduledStartHHMM = dtObj.hhmm
+    wop.station = station.reference()
+  }
+
+  let wopToX = async wop => {
+    let dateHHMM = {ymd: wop.scheduledStartDate, hhmm: wop.scheduledStartHHMM}
+    if ( ! dateHHMM.ymd ) return 0
+    let daysInt = dateHHMM.ymd.dateSubtract(global.todayYMD())
+    let slotHoursInDay = await stationAndDateToSlotHours(station, wop.scheduledStartDate)
+    let hoursNum = hhMMToHHNum(dateHHMM.hhmm)
+    return daysInt + (hoursNum / slotHoursInDay)
+  }
+
+  let stationToY = station => {
+    for ( var i = 0; i < rows.length; i++ ) {
+      let row = rows[i]
+      if ( row.object === station ) {
+        return i
+      }
+    }
+    return 0
+  }
+
+  let addProcesses = async (dwellers, wo) => {
+    let allocsOccurred
+    let wop; let wops = await 'WOProcess'.bring({workOrder: wo})
+    while ( wop = wops.__() ) {
+      let process = await wop.referee('process'); if ( ! process ) continue
+      let dweller = {}
+      dweller.caption = wo.workOrderNumber
+      dweller.object = wop
+      let station = await wop.referee('station')
+      if ( ! station ) {
+        await allocateWOProcessToStation(wop)
+        station = await wop.referee('station'); if ( ! station ) continue
+        allocsOccurred = true
+      }
+      //dweller.x = await dateAndHHMMToX({ymd: wop.scheduledStartDate, hhmm: wop.scheduledStartHHMM})
+      dweller.x = await wopToX(wop)
+      dweller.y = stationToY(station)
+      dweller.w = await wopToShiftCountDecimal(wop)
+      if ( ! dweller.w )
+        dweller.w = 1
+      dweller.caption = wo.workOrderNumber + ' - ' + process.processName
+      dwellers.push(dweller)
+    }
+    if ( allocsOccurred )
+      await global.foreman.doSave()
+  }
+
+  let addDwellers = async () => {
+    let dwellers = []
+    let wo; let wos = await 'WO'.bring({status: 'Awaiting Manufacture'})
+    while ( wo = wos.__() ) {
+      await addProcesses(dwellers, wo)
+    }
+    tableau.dwellers = dwellers
+  }
+
+  let rows = []
+  let station; let stations = await 'Station'.bring()
+  let y = 0
+  while ( station = stations.__() ) {
+    let row = {}
+    row.captions = []
+    row.captions.push(station.stationCode)
+    row.captions.push(station.stationName)
+    row.object = station
+    row.y = y
+    y++
+    rows.push(row)
+  }
+  tableau.rows = rows
+  
+  await addDwellers()
+
+  return tableau
+})
+*/

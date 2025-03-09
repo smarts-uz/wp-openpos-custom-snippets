@@ -1,0 +1,2 @@
+'helper'.trashAll('*')
+'helper'.flushCache()

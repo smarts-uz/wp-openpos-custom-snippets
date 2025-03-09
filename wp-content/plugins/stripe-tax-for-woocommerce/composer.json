@@ -1,0 +1,52 @@
+{
+    "name": "stripe/stripe-tax-for-woocommerce",
+    "type": "wordpress-plugin",
+    "description": "Stripe Tax integration for WooCommerce",
+    "license": "proprietary",
+    "require": {
+        "php": "^7.4 | ^8.0 | ^8.1",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "brain/monkey": "^2.4",
+        "php-parallel-lint/php-parallel-lint": ">=1.3",
+        "php-stubs/woocommerce-stubs": "^5.0@stable",
+        "php-stubs/wordpress-stubs": "^5.0@stable",
+        "phpunit/phpunit": "^7.0 | ^8.0 | ^9.0",
+        "squizlabs/php_codesniffer": "@stable",
+        "woocommerce/woocommerce-sniffs": "^1.0",
+        "wp-coding-standards/wpcs": "^3.0"
+    },
+    "autoload": {
+        "classmap": ["SDK/lib/", "Stripe/", "WooCommerce/", "WordPress/"],
+        "exclude-from-classmap": [
+            "/tests/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\Stripe\\StripeTaxForWooCommerce\\": "tests/phpunit",
+            "": "tests/Stubs"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "test": [
+            "./vendor/bin/phpunit --coverage-html build/coverage-report"
+        ]
+    },
+    "extra": {
+    },
+    "config": {
+        "notify-on-install": false,
+        "preferred-install": {
+            "*": "dist"
+        },
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}

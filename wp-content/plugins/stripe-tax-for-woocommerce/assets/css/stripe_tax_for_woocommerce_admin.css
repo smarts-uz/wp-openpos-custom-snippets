@@ -1,0 +1,160 @@
+.required-error {
+    border: 1px solid red !important;
+}
+
+.stripe_tax_for_woocommerce_message {
+    display: inline-block;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-left-width: 4px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
+    margin: 0;
+    padding: 0 12px;
+    word-wrap: break-word;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+
+.stripe_tax_for_woocommerce_message.stripe_tax_for_woocommerce_message_info {
+    border-left-color: #72aee6;
+}
+
+.stripe_tax_for_woocommerce_message.stripe_tax_for_woocommerce_message_error {
+    border-left-color: #d63638;
+}
+
+.stripe_tax_for_woocommerce_message.stripe_tax_for_woocommerce_message_success {
+    border-left-color: #00a32a;
+}
+
+.stripe_tax_for_woocommerce_message.stripe_tax_for_woocommerce_message_warning {
+    border-left-color: #dba617;
+}
+
+.stripe_tax_for_woocommerce_message p {
+    line-height: 28px;
+    margin: 0;
+}
+
+.stripe_tax_for_woocommerce_button_authorize .stripe_tax_for_woocommerce_message p {
+    line-height: 26px;
+}
+
+.stripe_tax_for_woocommerce_button_authorize .page-title-action {
+    top: 0;
+    margin-bottom: 4px;
+}
+
+table.form-table.stripe_tax_for_woocommerce_settings p {
+    margin: 0;
+}
+
+.woocommerce table.form-table.stripe_tax_for_woocommerce_settings input[type="submit"],
+.woocommerce table.form-table.stripe_tax_for_woocommerce_settings input[type="text"] {
+    margin-bottom: 4px;
+}
+
+.woocommerce_options_panel ._stripe_tax_for_woocommerce_tax_code_field .select2-selection__rendered {
+    font-size: 14px;
+}
+
+.woocommerce_options_panel ._stripe_tax_for_woocommerce_tax_code_field .select2-container
+{
+    width: 50% !important;
+}
+
+.stripe_tax_for_woocommerce_tax_ids .select2-container{
+    vertical-align: top;
+}
+
+.margin-top-5px{
+    margin-top: 5px;
+}
+
+.stripe_tax_for_woocommerce_button_disabled {
+    color: #a7aaad !important;
+    border-color: #dcdcde !important;
+    background: #f6f7f7 !important;
+    box-shadow: none !important;
+    cursor: default;
+    transform: none !important;
+    pointer-events: none;
+}
+
+.stripe_tax_for_woocommerce_button_disabled .stripe_tax_for_woocommerce_image_connect_with_stripe_st0 {
+    fill: #a7aaad !important;
+}
+
+.stripe_tax_for_woocommerce_button_authorize #stripe_tax_for_woocommerce_button_id_connect_with_stripe,
+.stripe_tax_for_woocommerce_button_authorize #stripe_tax_for_woocommerce_button_id_disconnect_from_stripe {
+    padding-right: 58px;
+}
+
+.stripe_tax_for_woocommerce_hidden {
+    display: none;
+}
+
+#select2-stripe_tax_for_woocommerce_id_live_mode_country-container {
+    font-weight: 600;
+}
+
+.stripe_tax_for_woocommerce_state_row .select2-selection__rendered {
+    font-weight: 600;
+}
+
+.stripe_tax_for_woocommerce_list_registration_country {
+    display: flex;
+    align-items: center;
+}
+
+.stripe_tax_for_woocommerce_list_registration_country > svg {
+    margin-right: 4px;
+}
+
+.stripe_tax_for_woocommerce_list_registration_country > * {
+    flex: 0 0 auto;
+}
+
+#stripe_tax_for_woocommerce_message_id_calculate_tax_error{
+    background-color: #f5cdcd;
+    display: block;
+}
+
+@media only screen and (max-width: 1280px) {
+    .woocommerce_options_panel ._stripe_tax_for_woocommerce_tax_code_field .select2-container {
+        width: 80% !important;
+    }
+}
+
+@media screen and (max-width: 782px) {
+    .stripe_tax_for_woocommerce_settings.form-table td .stripe_tax_for_woocommerce_message p {
+        font-size: 16px;
+        line-height: 38px;
+        margin: 0;
+    }
+
+    .stripe_tax_for_woocommerce_settings.form-table td .button {
+        vertical-align: top;
+    }
+
+    .stripe_tax_for_woocommerce_button_authorize .stripe_tax_for_woocommerce_image_connect_with_stripe {
+        width: 82px !important;
+        height: 39px !important;
+    }
+
+    .stripe_tax_for_woocommerce_button_authorize #stripe_tax_for_woocommerce_button_id_connect_with_stripe,
+    .stripe_tax_for_woocommerce_button_authorize #stripe_tax_for_woocommerce_button_id_disconnect_from_stripe {
+        padding-right: 84px;
+    }
+
+    .stripe_tax_for_woocommerce_button_authorize .stripe_tax_for_woocommerce_message p {
+        font-size: 14px;
+        line-height: 38px;
+    }
+}
+
+.stripe_tax_for_woocommerce_step{
+    margin-bottom: 50px;
+}
+
