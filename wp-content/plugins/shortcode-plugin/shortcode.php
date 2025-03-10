@@ -8,6 +8,8 @@
  * Plugin URI: https://example.com/shortcodes
  */
 
+
+ // Basic shortcode
 add_shortcode("message", "sp_show_static_message");
 
 function sp_show_static_message(){
@@ -16,6 +18,7 @@ function sp_show_static_message(){
 }
 
 
+// Shortcode with params
 add_shortcode("student", "sp_handle_student_data");
 
 function sp_handle_student_data($attributes){
@@ -27,4 +30,6 @@ function sp_handle_student_data($attributes){
 
     return "<h3>Student Data: Name - ".$attributes['name'].", Email - ".$attributes['email']."</h3>";
 }
+
+// Shortcode with DB operation
 
